@@ -1,0 +1,12 @@
+{
+  "dataset": "Orange/TimeStress",
+  "revision": "f90d17c",
+  "source_url": "https://huggingface.co/datasets/Orange/TimeStress/resolve/f90d17c/train.parquet",
+  "retrieved_utc": "2026-11-17T13:31:52.143194+00:00",
+  "file": "data/raw/timestress_train.parquet",
+  "sha256": "93df1d4782f770b38d1eda00acb5aa9d97c9a863fd6921fecb6f310052ffa59a",
+  "expected_sha256": "93df1d4782f770b38d1eda00acb5aa9d97c9a863fd6921fecb6f310052ffa59a",
+  "checksum_verified": true,
+  "license": "CC BY-SA 4.0",
+  "note": "The dataset is not redistributed in the project ZIP."
+}
