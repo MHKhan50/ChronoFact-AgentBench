@@ -13,7 +13,7 @@ from typing import Dict
 
 import pandas as pd
 
-from .temporal import infer_granularity
+from .temporal import infer_granularity, parse_temporal_interval
 
 DATASET_NAME = "Orange/TimeStress"
 DATASET_REVISION = "f90d17c"
@@ -147,6 +147,15 @@ def download_dataset(output_path: str, timeout: int = 90) -> Dict[str, object]:
     return manifest
 
 
+def _parses(value: object) -> bool:
+    """True when a date is in a supported form (years 0001-9999; BCE dates are not supported)."""
+    try:
+        parse_temporal_interval(str(value))
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
 def _fact_id(frame: pd.DataFrame) -> pd.Series:
     """Construct a stable subject-relation-object group identifier."""
     return (
@@ -210,6 +219,16 @@ def prepare_dataset(input_path: str, output_path: str) -> Dict[str, object]:
             "No eligible Correct, Incorrect, or Transitional records found."
         )
 
+    # Python dates cannot hold years before 0001, so rows with BCE or otherwise unparseable
+    # dates are excluded and counted.
+    date_ok = (
+        prepared["Time"].map(_parses)
+        & prepared["StartDate"].map(_parses)
+        & prepared["EndDate"].map(_parses)
+    )
+    unparseable_date_rows = int((~date_ok).sum())
+    prepared = prepared.loc[date_ok].copy()
+
     # Canonical three-class labels.
     prepared["label"] = prepared["Status"].map(normalize_status)
 
@@ -243,12 +262,15 @@ def prepare_dataset(input_path: str, output_path: str) -> Dict[str, object]:
         "eligible_rows": int(len(prepared)),
         "excluded_rows": int(len(frame) - len(prepared)),
         "excluded_status_counts": excluded_status_counts,
+        "excluded_unparseable_date_rows": unparseable_date_rows,
 
         # Explicit exclusion methodology.
         "exclusion_policy": (
             "No context and Discarded records are excluded "
             "from the three-class supervised benchmark. "
-            "Original raw records are preserved."
+            "Original raw records are preserved. Rows whose Time, StartDate or "
+            "EndDate is before year 0001 (BCE) or not in YYYY, YYYY-MM or "
+            "YYYY-MM-DD form are also excluded and counted."
         ),
 
         # Prepared dataset statistics.

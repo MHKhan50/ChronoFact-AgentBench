@@ -58,3 +58,10 @@ def test_real_parquet_round_trip_when_pyarrow_is_available(tmp_path, toy_frame):
     toy_frame.to_parquet(raw, index=False)
     manifest = prepare_dataset(str(raw), str(output))
     assert manifest["rows"] == len(toy_frame)
+
+
+def test_bce_and_unparseable_dates_are_rejected_by_parser():
+    from chronofact_agentbench.data import _parses
+
+    assert _parses("1999") and _parses("2001-05") and _parses("2001-05-17")
+    assert not _parses("-824") and not _parses("nan") and not _parses(None)
