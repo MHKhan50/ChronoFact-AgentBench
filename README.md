@@ -33,8 +33,11 @@ TimeStress contains repeated temporal contexts for the same underlying fact. The
 |---|---|
 | `majority` | In-sample class-prior reference; weak descriptive baseline, not deployable |
 | `interval_rule` | Deterministic inclusive interval arithmetic; an algorithmic reference, not a learned model |
-| `ollama_text_only` | Optional local Ollama model classifies the natural-language statement without tools |
-| `ollama_tool_agent` | Optional local Ollama model follows a plan-act-observe-finalize loop using date and interval tools |
+| `ollama_text` | Local model classifies the statement from memory, with the label definitions but no tools |
+| `ollama_tool_dates` | Local model calls the tools and receives only the two date intervals; it must compare them itself |
+| `ollama_tool_overlap` | Local model also receives overlap counts and containment flags |
+
+The interval rule applies the same definition that produced the TimeStress labels, so it is a ceiling, not a competitor. The three agent conditions separate where errors come from: memory (`text`), date reasoning (`tool_dates`), or copying a label that the flags already imply (`tool_overlap`). All three see the same label definitions.
 
 The interval-rule baseline uses only `Time`, `StartDate`, and `EndDate`. `Status` is the target. `Alpha` is retained only for descriptive analysis and is never sent to a model or used as a prediction feature.
 
@@ -102,10 +105,10 @@ First confirm Ollama is running and that the selected model is installed:
 ollama list
 ```
 
-Then run a small paired comparison on up to 50 stratified rows:
+Then run a paired comparison of the three agent conditions on stratified rows (300 rows, 900 agent episodes):
 
 ```bash
-python -m chronofact_agentbench run --input data/processed/timestress_prepared.csv --output reports/ollama-qwen25-3b --include-ollama --ollama-model qwen2.5:3b --ollama-sample-limit 50
+python -m chronofact_agentbench run --input data/processed/timestress_prepared.csv --output reports/qwen25-3b --include-ollama --ollama-model qwen2.5:3b --ollama-sample-limit 300
 ```
 
 The LLM comparison is optional and may be slow. An invalid or unparseable response is recorded as an abstention; it is not silently replaced by the interval-rule answer.

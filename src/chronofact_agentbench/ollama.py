@@ -8,7 +8,13 @@ import urllib.error
 import urllib.request
 from typing import Dict, List, Mapping, Optional
 
-from .policies import LABELS, tool_observation
+from .policies import EVIDENCE_LEVELS, LABELS, tool_observation
+
+LABEL_DEFINITIONS = (
+    "Labels: correct = the time in the statement lies entirely inside the period when the fact held; "
+    "incorrect = the time does not overlap that period at all; "
+    "transitional = the time partly overlaps that period."
+)
 
 
 class OllamaError(RuntimeError):
@@ -93,7 +99,7 @@ def predict_text_only(client: OllamaClient, row: Mapping[str, object]) -> Dict[s
             "role": "system",
             "content": (
                 "Classify the time-qualified historical statement using your learned knowledge only. "
-                "Do not use external tools. Return JSON with keys label and confidence. "
+                "Do not use external tools. " + LABEL_DEFINITIONS + " Return JSON with keys label and confidence. "
                 "label must be correct, incorrect, or transitional. Confidence must be 0 to 1."
             ),
         },
@@ -122,8 +128,15 @@ def predict_text_only(client: OllamaClient, row: Mapping[str, object]) -> Dict[s
     }
 
 
-def predict_tool_agent(client: OllamaClient, row: Mapping[str, object]) -> Dict[str, object]:
-    """Run a small plan-act-observe-finalize loop using deterministic date tools."""
+def predict_tool_agent(
+    client: OllamaClient, row: Mapping[str, object], evidence_level: str = "overlap"
+) -> Dict[str, object]:
+    """Run a small plan-act-observe-finalize loop using deterministic date tools.
+
+    ``evidence_level`` sets what compare_context returns (see ``tool_observation``).
+    """
+    if evidence_level not in EVIDENCE_LEVELS:
+        raise ValueError("Unsupported evidence level: {!r}".format(evidence_level))
     trace = []
     invalid_actions = 0
     tool_calls = 0
@@ -141,6 +154,7 @@ def predict_tool_agent(client: OllamaClient, row: Mapping[str, object]) -> Dict[
                 "You are a temporal fact verification agent. Do not guess from memory. "
                 "Use the available tools in order: first request get_fact_interval, then "
                 "request compare_context, then classify from the returned interval evidence. "
+                + LABEL_DEFINITIONS + " "
                 "For tool requests return JSON {\"action\":\"get_fact_interval\"} or "
                 "{\"action\":\"compare_context\"}. For the final answer return JSON "
                 "{\"action\":\"final\",\"label\":\"correct|incorrect|transitional\","
@@ -175,7 +189,7 @@ def predict_tool_agent(client: OllamaClient, row: Mapping[str, object]) -> Dict[
             continue
 
         if name == "compare_context" and fact_interval is not None and evidence is None:
-            evidence = tool_observation(row)
+            evidence = tool_observation(row, evidence_level)
             tool_calls += 1
             observation = {"tool": name, "observation": evidence}
             trace.append(observation)

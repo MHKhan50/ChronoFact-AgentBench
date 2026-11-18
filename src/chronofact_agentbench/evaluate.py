@@ -16,6 +16,14 @@ from .metrics import classification_metrics
 from .ollama import OllamaClient, OllamaError, predict_text_only, predict_tool_agent
 from .policies import interval_rule_policy, majority_policy
 
+# Agent conditions, from least to most help: memory only, the two date intervals, and the
+# intervals plus overlap counts and containment flags (from which the label follows by rule).
+AGENT_CONDITIONS = {
+    "text": predict_text_only,
+    "tool_dates": lambda client, row: predict_tool_agent(client, row, evidence_level="dates"),
+    "tool_overlap": lambda client, row: predict_tool_agent(client, row, evidence_level="overlap"),
+}
+
 
 def _stratified_sample(frame: pd.DataFrame, limit: int, seed: int) -> pd.DataFrame:
     """Sample proportionally by class and precision while preserving source indices."""
@@ -111,16 +119,17 @@ def run_experiment(
                 "alpha_for_analysis_only": row.get("Alpha"),
                 "majority_prediction": majority_policy(str(majority_label)),
                 "interval_rule_prediction": interval_rule_policy(record),
-                "ollama_text_prediction": None,
-                "ollama_tool_agent_prediction": None,
-                "ollama_text_confidence": None,
-                "ollama_tool_agent_confidence": None,
-                "ollama_text_tool_calls": 0,
-                "ollama_tool_agent_tool_calls": 0,
-                "ollama_text_invalid_actions": 0,
-                "ollama_tool_agent_invalid_actions": 0,
             }
         )
+        for condition in AGENT_CONDITIONS:
+            prediction_rows[-1].update(
+                {
+                    "ollama_{}_prediction".format(condition): None,
+                    "ollama_{}_confidence".format(condition): None,
+                    "ollama_{}_tool_calls".format(condition): 0,
+                    "ollama_{}_invalid_actions".format(condition): 0,
+                }
+            )
 
     traces = []
     ollama_error = None
@@ -130,26 +139,23 @@ def run_experiment(
         sampled_indices = set(sample.index.tolist())
         for row_index in sorted(sampled_indices):
             row = data.iloc[row_index]
+            results = {}
             try:
-                text_result = predict_text_only(client, row)
-                agent_result = predict_tool_agent(client, row)
+                for condition, runner in AGENT_CONDITIONS.items():
+                    results[condition] = runner(client, row)
             except OllamaError as exc:
                 ollama_error = str(exc)
                 break
-            prediction_rows[row_index]["ollama_text_prediction"] = text_result["label"]
-            prediction_rows[row_index]["ollama_tool_agent_prediction"] = agent_result["label"]
-            prediction_rows[row_index]["ollama_text_confidence"] = text_result["confidence"]
-            prediction_rows[row_index]["ollama_tool_agent_confidence"] = agent_result["confidence"]
-            prediction_rows[row_index]["ollama_text_tool_calls"] = text_result["tool_calls"]
-            prediction_rows[row_index]["ollama_tool_agent_tool_calls"] = agent_result["tool_calls"]
-            prediction_rows[row_index]["ollama_text_invalid_actions"] = text_result["invalid_actions"]
-            prediction_rows[row_index]["ollama_tool_agent_invalid_actions"] = agent_result["invalid_actions"]
+            for condition, result in results.items():
+                prediction_rows[row_index]["ollama_{}_prediction".format(condition)] = result["label"]
+                prediction_rows[row_index]["ollama_{}_confidence".format(condition)] = result["confidence"]
+                prediction_rows[row_index]["ollama_{}_tool_calls".format(condition)] = result["tool_calls"]
+                prediction_rows[row_index]["ollama_{}_invalid_actions".format(condition)] = result["invalid_actions"]
             traces.append(
                 {
                     "row_id": row_index,
                     "fact_id": str(row.get("fact_id", "")),
-                    "text_only": text_result["trace"],
-                    "tool_agent": agent_result["trace"],
+                    **{condition: result["trace"] for condition, result in results.items()},
                 }
             )
 
@@ -161,20 +167,17 @@ def run_experiment(
     if include_ollama:
         ollama_subset = predictions[predictions["ollama_text_prediction"].notna()].copy()
         if not ollama_subset.empty:
+            for condition in AGENT_CONDITIONS:
+                metrics_rows.append(
+                    _metric_row("ollama_" + condition, ollama_subset, "ollama_{}_prediction".format(condition))
+                )
+                calls = ollama_subset["ollama_{}_tool_calls".format(condition)].astype(int).tolist()
+                invalid = ollama_subset["ollama_{}_invalid_actions".format(condition)].astype(int).tolist()
+                metrics_rows[-1]["mean_tool_calls"] = sum(calls) / float(len(calls))
+                metrics_rows[-1]["invalid_actions"] = sum(invalid)
             metrics_rows.append(
-                _metric_row("ollama_text_only", ollama_subset, "ollama_text_prediction")
+                _metric_row("interval_rule_on_agent_sample", ollama_subset, "interval_rule_prediction")
             )
-            text_calls = ollama_subset["ollama_text_tool_calls"].astype(int).tolist()
-            text_invalid = ollama_subset["ollama_text_invalid_actions"].astype(int).tolist()
-            metrics_rows[-1]["mean_tool_calls"] = sum(text_calls) / float(len(text_calls))
-            metrics_rows[-1]["invalid_actions"] = sum(text_invalid)
-            metrics_rows.append(
-                _metric_row("ollama_tool_agent", ollama_subset, "ollama_tool_agent_prediction")
-            )
-            agent_calls = ollama_subset["ollama_tool_agent_tool_calls"].astype(int).tolist()
-            agent_invalid = ollama_subset["ollama_tool_agent_invalid_actions"].astype(int).tolist()
-            metrics_rows[-1]["mean_tool_calls"] = sum(agent_calls) / float(len(agent_calls))
-            metrics_rows[-1]["invalid_actions"] = sum(agent_invalid)
 
     metrics = pd.DataFrame(metrics_rows)
     metrics.to_csv(out / "metrics.csv", index=False)

@@ -22,3 +22,13 @@ def test_majority_policy_rejects_unknown_class():
         pass
     else:
         raise AssertionError("Unknown majority label should be rejected")
+
+
+def test_dates_evidence_hides_overlap_flags():
+    from chronofact_agentbench.policies import tool_observation
+
+    row = {"Time": "2001", "StartDate": "1999-05-01", "EndDate": "2001-06-30"}
+    dates = tool_observation(row, "dates")
+    assert set(dates) == {"time_granularity", "context_start", "context_end", "fact_start", "fact_end"}
+    full = tool_observation(row, "overlap")
+    assert full["partial_overlap"] is True and "overlap_days" in full

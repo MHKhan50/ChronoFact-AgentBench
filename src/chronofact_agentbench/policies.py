@@ -21,9 +21,26 @@ def majority_policy(majority_label: str) -> str:
     return majority_label
 
 
-def tool_observation(row: Mapping[str, object]) -> Dict[str, object]:
-    """Return numeric interval evidence for an agent, without revealing the target."""
+EVIDENCE_LEVELS = ("dates", "overlap")
+
+
+def tool_observation(row: Mapping[str, object], level: str = "overlap") -> Dict[str, object]:
+    """Return interval evidence for an agent, without the target label.
+
+    ``dates``: the parsed context and fact intervals only; the agent must compare them itself.
+    ``overlap``: also the overlap counts and containment flags, from which the label follows by rule.
+    """
+    if level not in EVIDENCE_LEVELS:
+        raise ValueError("Unsupported evidence level: {!r}".format(level))
     evidence = row_interval_evidence(row)
+    if level == "dates":
+        return {
+            "time_granularity": evidence["granularity"],
+            "context_start": evidence["context_start"],
+            "context_end": evidence["context_end"],
+            "fact_start": evidence["fact_start"],
+            "fact_end": evidence["fact_end"],
+        }
     return {
         "time_granularity": evidence["granularity"],
         "context_start": evidence["context_start"],
