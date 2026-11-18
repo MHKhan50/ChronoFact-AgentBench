@@ -1,6 +1,6 @@
 # Data dictionary
 
-The source dataset is `Orange/TimeStress`, distributed as a Parquet file under CC BY-SA 4.0. The project ZIP does not redistribute the data.
+The source dataset is `Orange/TimeStress`, distributed as a Parquet file under CC BY-SA 4.0. This repository does not redistribute the data.
 
 | Field | Meaning | Use in this project |
 |---|---|---|

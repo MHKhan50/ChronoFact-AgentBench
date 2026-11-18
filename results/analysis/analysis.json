@@ -1,0 +1,399 @@
+{
+  "qwen2.5:3b": {
+    "rows": 150,
+    "facts": 82,
+    "label_counts": {
+      "transitional": 50,
+      "correct": 50,
+      "incorrect": 50
+    },
+    "granularity_counts": {
+      "year": 82,
+      "month": 34,
+      "day": 34
+    },
+    "conditions": {
+      "text": {
+        "accuracy": 0.35333333333333333,
+        "accuracy_ci95": [
+          0.22794117647058823,
+          0.4720496894409938
+        ],
+        "coverage": 1.0,
+        "selective_accuracy": 0.35333333333333333,
+        "abstentions": 0,
+        "lenient_accuracy": 0.35333333333333333,
+        "lenient_accuracy_ci95": [
+          0.23169821623589373,
+          0.4695213781957095
+        ],
+        "lenient_recall_by_label": {
+          "correct": 0.1,
+          "incorrect": 0.96,
+          "transitional": 0.0
+        },
+        "lenient_recovered": 0,
+        "recall_by_label": {
+          "correct": 0.1,
+          "incorrect": 0.96,
+          "transitional": 0.0
+        },
+        "accuracy_by_granularity": {
+          "year": 0.2073170731707317,
+          "month": 0.5294117647058824,
+          "day": 0.5294117647058824
+        },
+        "confusion": {
+          "correct": {
+            "correct": 5,
+            "incorrect": 45
+          },
+          "incorrect": {
+            "correct": 2,
+            "incorrect": 48
+          },
+          "transitional": {
+            "correct": 5,
+            "incorrect": 45
+          }
+        }
+      },
+      "tool_dates": {
+        "accuracy": 0.41333333333333333,
+        "accuracy_ci95": [
+          0.29196319951338195,
+          0.5272810931399887
+        ],
+        "coverage": 0.9933333333333333,
+        "selective_accuracy": 0.4161073825503356,
+        "abstentions": 1,
+        "lenient_accuracy": 0.41333333333333333,
+        "lenient_accuracy_ci95": [
+          0.2907801418439716,
+          0.5294117647058824
+        ],
+        "lenient_recall_by_label": {
+          "correct": 0.2,
+          "incorrect": 1.0,
+          "transitional": 0.04
+        },
+        "lenient_recovered": 0,
+        "recall_by_label": {
+          "correct": 0.2,
+          "incorrect": 1.0,
+          "transitional": 0.04
+        },
+        "accuracy_by_granularity": {
+          "year": 0.2682926829268293,
+          "month": 0.6176470588235294,
+          "day": 0.5588235294117647
+        },
+        "confusion": {
+          "correct": {
+            "abstain": 1,
+            "correct": 10,
+            "incorrect": 37,
+            "transitional": 2
+          },
+          "incorrect": {
+            "abstain": 0,
+            "correct": 0,
+            "incorrect": 50,
+            "transitional": 0
+          },
+          "transitional": {
+            "abstain": 0,
+            "correct": 1,
+            "incorrect": 47,
+            "transitional": 2
+          }
+        }
+      },
+      "tool_overlap": {
+        "accuracy": 0.9866666666666667,
+        "accuracy_ci95": [
+          0.9657534246575342,
+          1.0
+        ],
+        "coverage": 0.9933333333333333,
+        "selective_accuracy": 0.9932885906040269,
+        "abstentions": 1,
+        "lenient_accuracy": 0.9866666666666667,
+        "lenient_accuracy_ci95": [
+          0.9650318979266347,
+          1.0
+        ],
+        "lenient_recall_by_label": {
+          "correct": 0.98,
+          "incorrect": 1.0,
+          "transitional": 0.98
+        },
+        "lenient_recovered": 0,
+        "recall_by_label": {
+          "correct": 0.98,
+          "incorrect": 1.0,
+          "transitional": 0.98
+        },
+        "accuracy_by_granularity": {
+          "year": 0.9878048780487805,
+          "month": 0.9705882352941176,
+          "day": 1.0
+        },
+        "confusion": {
+          "correct": {
+            "abstain": 1,
+            "correct": 49,
+            "incorrect": 0,
+            "transitional": 0
+          },
+          "incorrect": {
+            "abstain": 0,
+            "correct": 0,
+            "incorrect": 50,
+            "transitional": 0
+          },
+          "transitional": {
+            "abstain": 0,
+            "correct": 0,
+            "incorrect": 1,
+            "transitional": 49
+          }
+        }
+      }
+    },
+    "mcnemar": {
+      "tool_dates vs text": {
+        "a_only": 11,
+        "b_only": 2,
+        "p_value": 0.0224609375
+      },
+      "tool_overlap vs tool_dates": {
+        "a_only": 86,
+        "b_only": 0,
+        "p_value": 2.5849394142282115e-26
+      },
+      "tool_overlap vs text": {
+        "a_only": 95,
+        "b_only": 0,
+        "p_value": 5.048709793414476e-29
+      }
+    },
+    "mcnemar_lenient": {
+      "tool_dates vs text": {
+        "a_only": 11,
+        "b_only": 2,
+        "p_value": 0.0224609375
+      },
+      "tool_overlap vs tool_dates": {
+        "a_only": 86,
+        "b_only": 0,
+        "p_value": 2.5849394142282115e-26
+      },
+      "tool_overlap vs text": {
+        "a_only": 95,
+        "b_only": 0,
+        "p_value": 5.048709793414476e-29
+      }
+    }
+  },
+  "llama3.1:8b": {
+    "rows": 150,
+    "facts": 82,
+    "label_counts": {
+      "transitional": 50,
+      "correct": 50,
+      "incorrect": 50
+    },
+    "granularity_counts": {
+      "year": 82,
+      "month": 34,
+      "day": 34
+    },
+    "conditions": {
+      "text": {
+        "accuracy": 0.46,
+        "accuracy_ci95": [
+          0.3380281690140845,
+          0.5766871165644172
+        ],
+        "coverage": 1.0,
+        "selective_accuracy": 0.46,
+        "abstentions": 0,
+        "lenient_accuracy": 0.46,
+        "lenient_accuracy_ci95": [
+          0.3333333333333333,
+          0.5761589403973509
+        ],
+        "lenient_recall_by_label": {
+          "correct": 0.68,
+          "incorrect": 0.6,
+          "transitional": 0.1
+        },
+        "lenient_recovered": 0,
+        "recall_by_label": {
+          "correct": 0.68,
+          "incorrect": 0.6,
+          "transitional": 0.1
+        },
+        "accuracy_by_granularity": {
+          "year": 0.3048780487804878,
+          "month": 0.6470588235294118,
+          "day": 0.6470588235294118
+        },
+        "confusion": {
+          "correct": {
+            "correct": 34,
+            "incorrect": 16,
+            "transitional": 0
+          },
+          "incorrect": {
+            "correct": 14,
+            "incorrect": 30,
+            "transitional": 6
+          },
+          "transitional": {
+            "correct": 39,
+            "incorrect": 6,
+            "transitional": 5
+          }
+        }
+      },
+      "tool_dates": {
+        "accuracy": 0.3,
+        "accuracy_ci95": [
+          0.21014492753623187,
+          0.3970614309553608
+        ],
+        "coverage": 0.47333333333333333,
+        "selective_accuracy": 0.6338028169014085,
+        "abstentions": 79,
+        "lenient_accuracy": 0.72,
+        "lenient_accuracy_ci95": [
+          0.6230629139072847,
+          0.803680981595092
+        ],
+        "lenient_recall_by_label": {
+          "correct": 1.0,
+          "incorrect": 0.8,
+          "transitional": 0.36
+        },
+        "lenient_recovered": 76,
+        "recall_by_label": {
+          "correct": 0.58,
+          "incorrect": 0.06,
+          "transitional": 0.26
+        },
+        "accuracy_by_granularity": {
+          "year": 0.3170731707317073,
+          "month": 0.35294117647058826,
+          "day": 0.20588235294117646
+        },
+        "confusion": {
+          "correct": {
+            "abstain": 21,
+            "correct": 29,
+            "incorrect": 0,
+            "transitional": 0
+          },
+          "incorrect": {
+            "abstain": 46,
+            "correct": 1,
+            "incorrect": 3,
+            "transitional": 0
+          },
+          "transitional": {
+            "abstain": 12,
+            "correct": 24,
+            "incorrect": 1,
+            "transitional": 13
+          }
+        }
+      },
+      "tool_overlap": {
+        "accuracy": 0.8866666666666667,
+        "accuracy_ci95": [
+          0.8092105263157895,
+          0.9559748427672956
+        ],
+        "coverage": 0.8866666666666667,
+        "selective_accuracy": 1.0,
+        "abstentions": 17,
+        "lenient_accuracy": 1.0,
+        "lenient_accuracy_ci95": [
+          1.0,
+          1.0
+        ],
+        "lenient_recall_by_label": {
+          "correct": 1.0,
+          "incorrect": 1.0,
+          "transitional": 1.0
+        },
+        "lenient_recovered": 17,
+        "recall_by_label": {
+          "correct": 1.0,
+          "incorrect": 0.66,
+          "transitional": 1.0
+        },
+        "accuracy_by_granularity": {
+          "year": 0.926829268292683,
+          "month": 0.8235294117647058,
+          "day": 0.8529411764705882
+        },
+        "confusion": {
+          "correct": {
+            "abstain": 0,
+            "correct": 50,
+            "incorrect": 0,
+            "transitional": 0
+          },
+          "incorrect": {
+            "abstain": 17,
+            "correct": 0,
+            "incorrect": 33,
+            "transitional": 0
+          },
+          "transitional": {
+            "abstain": 0,
+            "correct": 0,
+            "incorrect": 0,
+            "transitional": 50
+          }
+        }
+      }
+    },
+    "mcnemar": {
+      "tool_dates vs text": {
+        "a_only": 22,
+        "b_only": 46,
+        "p_value": 0.004903382516355933
+      },
+      "tool_overlap vs tool_dates": {
+        "a_only": 88,
+        "b_only": 0,
+        "p_value": 6.462348535570529e-27
+      },
+      "tool_overlap vs text": {
+        "a_only": 74,
+        "b_only": 10,
+        "p_value": 3.2856922591567363e-13
+      }
+    },
+    "mcnemar_lenient": {
+      "tool_dates vs text": {
+        "a_only": 47,
+        "b_only": 8,
+        "p_value": 8.067609591488889e-08
+      },
+      "tool_overlap vs tool_dates": {
+        "a_only": 42,
+        "b_only": 0,
+        "p_value": 4.547473508864641e-13
+      },
+      "tool_overlap vs text": {
+        "a_only": 81,
+        "b_only": 0,
+        "p_value": 8.271806125530277e-25
+      }
+    }
+  }
+}

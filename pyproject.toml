@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "chronofact-agentbench"
-version = "0.1.0"
+version = "0.2.0"
 description = "A reproducible benchmark for tool-augmented temporal fact verification agents."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest==8.3.5"]
+analysis = ["numpy==2.0.2", "matplotlib==3.9.4"]
 
 [project.scripts]
 chronofact = "chronofact_agentbench.cli:main"

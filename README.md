@@ -1,4 +1,4 @@
-# ChronoFact-AgentBench v0.1.0
+# ChronoFact-AgentBench
 
 **Tool-Augmented Temporal Verification of Time-Qualified Knowledge Claims**
 
@@ -12,10 +12,6 @@ Does access to explicit date-interval tools improve a local language model's cla
 
 The project does not claim a new dataset or a new temporal-reasoning algorithm. Its contribution is a reproducible agent-evaluation protocol with explicit tool traces, abstention accounting, and granularity-specific metrics.
 
-## Why this is a distinct portfolio topic
-
-This project concerns temporal reasoning over historical knowledge claims. It is not an upgrade of an earlier agent-reliability, memory-integrity, healthcare-operations, allocation, decomposition, astronomy, or cross-lingual retrieval project. The agent's tools perform calendar interval inspection and overlap analysis; they do not retrieve multilingual evidence or acquire scientific features sequentially.
-
 ## Dataset
 
 - **Dataset:** [Orange/TimeStress](https://huggingface.co/datasets/Orange/TimeStress)
@@ -23,7 +19,7 @@ This project concerns temporal reasoning over historical knowledge claims. It is
 - **Published file SHA-256:** `93df1d4782f770b38d1eda00acb5aa9d97c9a863fd6921fecb6f310052ffa59a`
 - **Reported scale:** 523,764 rows, 2,003 temporal facts, 1,883 entities, 86 relations
 - **Context precision:** year, year-month, year-month-day
-- **License:** CC BY-SA 4.0; dataset is downloaded separately and is not included in this ZIP
+- **License:** CC BY-SA 4.0; the dataset is downloaded separately and is not redistributed in this repository
 
 TimeStress contains repeated temporal contexts for the same underlying fact. The pipeline therefore creates `fact_id = SubjectID|RelationID|ObjectID` and retains it for cluster-aware analysis. There is no official train/validation/test split in TimeStress; this project does not invent one or train on the evaluation rows.
 
@@ -50,7 +46,34 @@ The interval-rule baseline uses only `Time`, `StartDate`, and `EndDate`. `Status
 - Accuracy by year, month, and day context precision
 - Tool-call count and invalid-action count
 
-No pre-filled scientific results are supplied. The experiment creates its own reports from the downloaded data and selected model.
+Every number below was produced by the pipeline from the downloaded data; the per-row predictions and tool traces are in `results/`.
+
+## Results (v0.2.0)
+
+Two local models (Ollama, temperature 0) on 150 TimeStress claims, 50 per label, from 82 facts. Abstentions count as
+wrong; 95% intervals from a bootstrap over facts. "Lenient" also accepts a valid label given with a misnamed final
+action (`classify` instead of `final`) after both tools were called.
+
+| Model | Condition | Accuracy % [95% CI] | Abstained | Lenient % |
+|---|---|---|---|---|
+| qwen2.5:3b | Text only | 35.3 [22.8, 47.2] | 0 | 35.3 |
+| qwen2.5:3b | Tool: dates | 41.3 [29.2, 52.7] | 1 | 41.3 |
+| qwen2.5:3b | Tool: dates + overlap flags | 98.7 [96.6, 100.0] | 1 | 98.7 |
+| llama3.1:8b | Text only | 46.0 [33.8, 57.7] | 0 | 46.0 |
+| llama3.1:8b | Tool: dates | 30.0 [21.0, 39.7] | 79 | 72.0 |
+| llama3.1:8b | Tool: dates + overlap flags | 88.7 [80.9, 95.6] | 17 | 100.0 |
+
+- From memory both models are close to guessing (33.3%); neither recognises partial overlap.
+- Given only the two date spans, `qwen2.5:3b` still calls 37 of 50 correct claims incorrect, and `llama3.1:8b`
+  (leniently scored) gets only 18 of 50 partly overlapping claims right.
+- When the tool also returns overlap flags, both models reach 98.7–100%.
+
+On all 500,108 rows the majority label scores 86.4% and the interval rule 100% (it applies the label definition).
+Paired McNemar tests and confusion matrices: `results/analysis/tables.md` and `analysis.json`. Reproduce with
+`python scripts/analyse_agents.py`.
+
+**Paper:** *Give the Model the Overlap, Not the Dates: Tool Evidence for Checking Time-Qualified Claims with Small
+Local Models* — [`paper/main.pdf`](paper/main.pdf).
 
 ## Requirements
 
@@ -63,7 +86,7 @@ Dependencies are intentionally small: pandas, PyArrow, and pytest for developmen
 
 ## VS Code integrated-terminal setup
 
-Open the extracted `ChronoFact-AgentBench-v0.1.0` folder in VS Code. In its integrated terminal, run these commands in order:
+Open the repository folder in VS Code. In its integrated terminal, run these commands in order:
 
 ```bash
 python3 -m venv .venv
@@ -126,8 +149,11 @@ Each run writes:
 ## Repository layout
 
 ```text
-ChronoFact-AgentBench-v0.1.0/
+ChronoFact-AgentBench/
 ├── docs/
+├── paper/                 # LaTeX source and PDF of the paper
+├── results/               # agent predictions, tool traces and the paired analysis
+├── scripts/analyse_agents.py
 ├── src/chronofact_agentbench/
 ├── tests/
 ├── CITATION.cff
@@ -148,6 +174,3 @@ ChronoFact-AgentBench-v0.1.0/
 
 See `DATA_LICENSE.md`, `docs/METHODOLOGY.md`, `docs/EXPERIMENT_PROTOCOL.md`, `docs/DATA_DICTIONARY.md`, `docs/LIMITATIONS_ETHICS.md`, and `docs/REFERENCES.md` before writing a paper or public article.
 
-## Repository name
-
-Recommended GitHub repository: **`chronofact-agentbench`**.

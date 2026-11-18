@@ -1,16 +1,30 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below and cite the TimeStress dataset and paper separately."
 title: "ChronoFact-AgentBench: Tool-Augmented Temporal Verification of Time-Qualified Knowledge Claims"
-version: 0.1.0
-date-released: 2026-11-17
+version: 0.2.0
+date-released: 2026-11-18
 authors:
   - family-names: Hussain
     given-names: Muzammal
+    affiliation: "Independent researcher, Glasgow, United Kingdom"
+    orcid: "https://orcid.org/0009-0001-2570-5686"
 license: MIT
-repository-code: "https://github.com/MHKhan50/chronofact-agentbench"
+type: software
+abstract: >-
+  Code, results and paper for checking time-qualified claims with small local language models. On 150 TimeStress
+  claims balanced over the labels correct, incorrect and transitional, qwen2.5:3b and llama3.1:8b answered from
+  memory, with a tool returning the claim's time span and the fact's validity period, and with a tool that also
+  returns overlap flags. From memory they reached 35.3% and 46.0% accuracy; given the dates, 41.3% and 30.0%
+  (72.0% when misnamed final actions are accepted); with overlap flags, 98.7% and 88.7% (100% leniently). The
+  models fail at comparing date intervals, above all at partial overlap, so temporal agents should compute the
+  comparison in code. Includes the pinned TimeStress pipeline, per-row predictions, tool traces, a paired analysis
+  with fact-level bootstrap intervals and McNemar tests, and the LaTeX paper.
+repository-code: "https://github.com/MHKhan50/ChronoFact-AgentBench"
 keywords:
   - Agentic AI
   - temporal reasoning
   - knowledge graphs
+  - small language models
+  - Ollama
   - historical fact verification
   - tool use

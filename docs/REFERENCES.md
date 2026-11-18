@@ -1,22 +1,32 @@
 # References and provenance
 
-1. Khodja, H. A., Béchet, F., Brabant, Q., Nasr, A., & Lecorvé, G. (2025). **Factual Knowledge in Language Models: Robustness and Anomalies under Simple Temporal Context Variations.** Proceedings of the First Workshop on Large Language Model Memorization (L2M2), 1–22. DOI: [10.18653/v1/2025.l2m2-1.1](https://doi.org/10.18653/v1/2025.l2m2-1.1). This is the primary paper introducing TimeStress.
+## Dataset
 
-2. Zhang, T., Wang, J., Li, Z., Qu, J., Liu, A., Chen, Z., & Zhi, H. (2024). **MusTQ: A Temporal Knowledge Graph Question Answering Dataset for Multi-Step Temporal Reasoning.** Findings of ACL 2024, 11688–11699. DOI: [10.18653/v1/2024.findings-acl.696](https://doi.org/10.18653/v1/2024.findings-acl.696).
+- Orange Research. **TimeStress** [dataset]. Hugging Face, <https://huggingface.co/datasets/Orange/TimeStress>.
+  CC BY-SA 4.0. Pinned file `train.parquet`, revision `f90d17c`, SHA-256
+  `93df1d4782f770b38d1eda00acb5aa9d97c9a863fd6921fecb6f310052ffa59a`.
+- Ammar Khodja, H., Béchet, F., Brabant, Q., Nasr, A., & Lecorvé, G. (2025). Factual Knowledge in Language Models:
+  Robustness and Anomalies under Simple Temporal Context Variations. *Proceedings of the First Workshop on Large
+  Language Model Memorization (L2M2)*, 1–22. <https://doi.org/10.18653/v1/2025.l2m2-1.1>. The paper that introduces
+  TimeStress.
+- Wikidata, the source of the facts and validity periods in TimeStress: <https://www.wikidata.org/>.
 
-3. Soulard, T., Raad, J., & Saïs, F. (2025). **WhenFactsExpire** [Dataset]. Zenodo. DOI: [10.5281/zenodo.15675768](https://doi.org/10.5281/zenodo.15675768). The Zenodo record describes a Wikidata-derived temporal fact-validation dataset; its processed archive is much larger than TimeStress, so it is not the primary dataset for this lightweight release.
+## Related work cited in the paper
 
-4. Orange Research. **TimeStress dataset** [Dataset]. Hugging Face. [Dataset card and files](https://huggingface.co/datasets/Orange/TimeStress). License: CC BY-SA 4.0. Pinned Parquet file revision: `f90d17c`; expected SHA-256: `93df1d4782f770b38d1eda00acb5aa9d97c9a863fd6921fecb6f310052ffa59a`.
+- Chen, W., Wang, X., & Wang, W. Y. (2021). A Dataset for Answering Time-Sensitive Questions. *NeurIPS Datasets and
+  Benchmarks Track*. <https://arxiv.org/abs/2108.06314>
+- Tan, Q., Ng, H. T., & Bing, L. (2023). Towards Benchmarking and Improving the Temporal Reasoning Capability of Large
+  Language Models. *ACL 2023*, 14820–14835. <https://doi.org/10.18653/v1/2023.acl-long.828>
+- Fatemi, B., et al. (2025). Test of Time: A Benchmark for Evaluating LLMs on Temporal Reasoning. *ICLR 2025*.
+  <https://arxiv.org/abs/2406.09170>
+- Schick, T., et al. (2023). Toolformer: Language Models Can Teach Themselves to Use Tools. *NeurIPS 2023*.
+- Gao, L., et al. (2023). PAL: Program-aided Language Models. *ICML 2023*, PMLR 202, 10764–10799.
+- Yao, S., et al. (2023). ReAct: Synergizing Reasoning and Acting in Language Models. *ICLR 2023*.
+- Qwen Team (2025). Qwen2.5 Technical Report. arXiv:2412.15115.
+- Grattafiori, A., et al. (2024). The Llama 3 Herd of Models. arXiv:2407.21783.
 
-5. Orange-OpenSource. **TimeStress source repository.** [GitHub](https://github.com/Orange-OpenSource/TimeStress). The repository documents data generation and the original LLM evaluation pipeline.
+## Positioning
 
-6. Wikidata contributors. **Wikidata: a free and open knowledge base.** [Wikidata](https://www.wikidata.org/). TimeStress reports Wikidata as its source of temporal facts.
-
-
-7. Jiang, P., Liu, Y., Wen, Y., Gan, Y., Liu, L., Zhang, R., Yang, J., Xue, Y., Deng, Y., Guo, X., & Liu, Q. (2026). **DyHist: Query-Aware Historical Dynamics Modeling for Temporal Knowledge Graph Extrapolation.** Findings of the Association for Computational Linguistics: EMNLP 2026. [ACL Anthology](https://aclanthology.org/2026.findings-emnlp.361/).
-
-8. **Temporal Modelling in Cultural Heritage Knowledge Graphs: Use Cases, Requirements, Evaluation, and Decision Support.** Transactions on Graph Data and Knowledge (TGDK), 4(1), 2 (2026). DOI: [10.4230/TGDK.4.1.2](https://doi.org/10.4230/TGDK.4.1.2).
-
-## Literature positioning
-
-TimeStress already evaluates temporal-context robustness across language models and date granularities. MusTQ studies multi-step temporal knowledge-graph QA. WhenFactsExpire studies temporal fact validity with corrupted temporal contexts. ChronoFact-AgentBench therefore positions itself as a small, reproducible **tool-augmented agent evaluation harness** over an existing dataset, not as a replacement for those datasets or a claim that temporal fact validation is a new problem.
+TimeStress measures whether models recall a fact consistently across temporal contexts when answering from memory.
+This repository keeps its labels and asks a different question: what a small local model needs from its tools to
+label a time-qualified claim, by changing only what the tool returns.
