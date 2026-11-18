@@ -48,6 +48,21 @@ def _stratified_sample(frame: pd.DataFrame, limit: int, seed: int) -> pd.DataFra
     return sampled.sample(frac=1.0, random_state=seed)
 
 
+def _balanced_sample(frame: pd.DataFrame, limit: int, seed: int) -> pd.DataFrame:
+    """Equal rows per label (as far as each label allows), spread over granularities within a label.
+
+    The full data are dominated by ``incorrect``; a proportional sample would leave almost no
+    ``transitional`` rows for the agents.
+    """
+    labels = sorted(frame["label"].unique())
+    per_label = max(1, int(limit) // len(labels))
+    pieces = []
+    for label in labels:
+        group = frame[frame["label"] == label]
+        pieces.append(_stratified_sample(group, min(per_label, len(group)), seed))
+    return pd.concat(pieces).sample(frac=1.0, random_state=seed)
+
+
 def _metric_row(policy: str, subset: pd.DataFrame, prediction_column: str) -> Dict[str, object]:
     metrics = classification_metrics(
         subset["label"].astype(str).tolist(),
@@ -135,7 +150,7 @@ def run_experiment(
     ollama_error = None
     if include_ollama:
         client = OllamaClient(model=ollama_model, base_url=ollama_base_url)
-        sample = _stratified_sample(data, int(ollama_sample_limit), seed + 1)
+        sample = _balanced_sample(data, int(ollama_sample_limit), seed + 1)
         sampled_indices = set(sample.index.tolist())
         for row_index in sorted(sampled_indices):
             row = data.iloc[row_index]

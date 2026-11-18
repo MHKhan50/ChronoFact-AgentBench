@@ -105,10 +105,10 @@ First confirm Ollama is running and that the selected model is installed:
 ollama list
 ```
 
-Then run a paired comparison of the three agent conditions on stratified rows (300 rows, 900 agent episodes):
+Then run a paired comparison of the three agent conditions on stratified rows (150 rows, 50 per label, so 450 agent episodes per model):
 
 ```bash
-python -m chronofact_agentbench run --input data/processed/timestress_prepared.csv --output reports/qwen25-3b --include-ollama --ollama-model qwen2.5:3b --ollama-sample-limit 300
+python -m chronofact_agentbench run --input data/processed/timestress_prepared.csv --output reports/qwen25-3b --include-ollama --ollama-model qwen2.5:3b --ollama-sample-limit 150
 ```
 
 The LLM comparison is optional and may be slow. An invalid or unparseable response is recorded as an abstention; it is not silently replaced by the interval-rule answer.
