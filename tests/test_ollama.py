@@ -10,7 +10,8 @@ class FakeClient:
     def __init__(self, responses):
         self.responses = list(responses)
 
-    def chat(self, messages):
+    def chat(self, messages, schema=None):
+        self.schemas = getattr(self, "schemas", []) + [schema]
         return self.responses.pop(0)
 
 
@@ -51,5 +52,52 @@ def test_tool_agent_executes_two_tools_before_final_label(toy_frame):
 def test_tool_agent_abstains_on_invalid_action(toy_frame):
     client = FakeClient(['{"action":"delete_database"}'])
     result = predict_tool_agent(client, toy_frame.iloc[0])
+    assert result["label"] == "abstain"
+    assert result["invalid_actions"] == 1
+
+
+def test_structured_output_sends_one_allowed_action_per_step(toy_frame):
+    client = FakeClient(
+        [
+            '{"action":"get_fact_interval"}',
+            '{"action":"compare_context"}',
+            '{"action":"final","label":"correct","confidence":0.9}',
+        ]
+    )
+    result = predict_tool_agent(client, toy_frame.iloc[0], evidence_level="dates", structured=True)
+    assert result["label"] == "correct"
+    actions = [schema["properties"]["action"]["enum"] for schema in client.schemas]
+    assert actions == [["get_fact_interval"], ["compare_context"], ["final"]]
+    assert client.schemas[-1]["properties"]["label"]["enum"] == ["correct", "incorrect", "transitional"]
+
+
+def test_code_agent_label_comes_from_the_evaluated_expression(toy_frame):
+    from chronofact_agentbench.policies import interval_rule_policy
+
+    expression = (
+        '"correct" if fs <= cs and ce <= fe else ("incorrect" if ce < fs or cs > fe else "transitional")'
+    )
+    row = toy_frame.iloc[0]
+    client = FakeClient(
+        [
+            '{"action":"get_fact_interval"}',
+            '{"action":"compare_context"}',
+            '{"action":"final_code","expression":' + __import__("json").dumps(expression) + '}',
+        ]
+    )
+    result = predict_tool_agent(client, row, evidence_level="dates", write_code=True)
+    assert result["label"] == interval_rule_policy(row.to_dict())
+    assert result["trace"][-1]["stage"] == "final_code"
+
+
+def test_code_agent_rejects_unsafe_expression(toy_frame):
+    client = FakeClient(
+        [
+            '{"action":"get_fact_interval"}',
+            '{"action":"compare_context"}',
+            '{"action":"final_code","expression":"__import__(\'os\').system(\'ls\')"}',
+        ]
+    )
+    result = predict_tool_agent(client, toy_frame.iloc[0], evidence_level="dates", write_code=True)
     assert result["label"] == "abstain"
     assert result["invalid_actions"] == 1

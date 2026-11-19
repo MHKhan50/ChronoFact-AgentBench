@@ -18,11 +18,32 @@ from .policies import interval_rule_policy, majority_policy
 
 # Agent conditions, from least to most help: memory only, the two date intervals, and the
 # intervals plus overlap counts and containment flags (from which the label follows by rule).
-AGENT_CONDITIONS = {
-    "text": predict_text_only,
-    "tool_dates": lambda client, row: predict_tool_agent(client, row, evidence_level="dates"),
-    "tool_overlap": lambda client, row: predict_tool_agent(client, row, evidence_level="overlap"),
-}
+DEFAULT_CONDITIONS = ("text", "tool_dates", "tool_code", "tool_overlap")
+
+
+def agent_conditions(names=DEFAULT_CONDITIONS, structured: bool = False):
+    """Runners for the requested agent conditions.
+
+    text: memory only. tool_dates: the tool returns the two date spans and the model compares them.
+    tool_code: as tool_dates, but the model writes an expression that computes the label, which is
+    evaluated safely (program-aided). tool_overlap: the tool also returns overlap flags.
+    """
+    runners = {
+        "text": lambda client, row: predict_text_only(client, row, structured=structured),
+        "tool_dates": lambda client, row: predict_tool_agent(
+            client, row, evidence_level="dates", structured=structured),
+        "tool_code": lambda client, row: predict_tool_agent(
+            client, row, evidence_level="dates", structured=structured, write_code=True),
+        "tool_overlap": lambda client, row: predict_tool_agent(
+            client, row, evidence_level="overlap", structured=structured),
+    }
+    unknown = [name for name in names if name not in runners]
+    if unknown:
+        raise ValueError("Unknown agent condition(s): {}".format(", ".join(unknown)))
+    return {name: runners[name] for name in names}
+
+
+AGENT_CONDITIONS = agent_conditions()
 
 
 def _stratified_sample(frame: pd.DataFrame, limit: int, seed: int) -> pd.DataFrame:
@@ -101,6 +122,8 @@ def run_experiment(
     ollama_sample_limit: int = 50,
     ollama_base_url: str = "http://localhost:11434",
     input_sha256: Optional[str] = None,
+    conditions=DEFAULT_CONDITIONS,
+    structured_output: bool = False,
 ) -> Dict[str, str]:
     """Run the full interval baseline and optional small local-model evaluation."""
     if "label" not in frame.columns or "granularity" not in frame.columns:
@@ -114,6 +137,7 @@ def run_experiment(
         raise ValueError("ollama_sample_limit must be positive when Ollama is enabled")
     if data.empty:
         raise ValueError("Experiment input contains no rows")
+    runners = agent_conditions(tuple(conditions), structured=structured_output)
 
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -136,7 +160,7 @@ def run_experiment(
                 "interval_rule_prediction": interval_rule_policy(record),
             }
         )
-        for condition in AGENT_CONDITIONS:
+        for condition in runners:
             prediction_rows[-1].update(
                 {
                     "ollama_{}_prediction".format(condition): None,
@@ -156,7 +180,7 @@ def run_experiment(
             row = data.iloc[row_index]
             results = {}
             try:
-                for condition, runner in AGENT_CONDITIONS.items():
+                for condition, runner in runners.items():
                     results[condition] = runner(client, row)
             except OllamaError as exc:
                 ollama_error = str(exc)
@@ -180,9 +204,10 @@ def run_experiment(
         _metric_row("interval_rule", predictions, "interval_rule_prediction"),
     ]
     if include_ollama:
-        ollama_subset = predictions[predictions["ollama_text_prediction"].notna()].copy()
+        answered = [predictions["ollama_{}_prediction".format(c)].notna() for c in runners]
+        ollama_subset = predictions[pd.concat(answered, axis=1).any(axis=1)].copy()
         if not ollama_subset.empty:
-            for condition in AGENT_CONDITIONS:
+            for condition in runners:
                 metrics_rows.append(
                     _metric_row("ollama_" + condition, ollama_subset, "ollama_{}_prediction".format(condition))
                 )
@@ -219,6 +244,8 @@ def run_experiment(
         "ollama_model": ollama_model if include_ollama else None,
         "ollama_sample_limit": int(ollama_sample_limit) if include_ollama else 0,
         "ollama_error": ollama_error,
+        "agent_conditions": list(runners) if include_ollama else [],
+        "structured_output": bool(structured_output) if include_ollama else None,
         "python": platform.python_version(),
         "pandas": pd.__version__,
         "input_sha256": input_sha256,

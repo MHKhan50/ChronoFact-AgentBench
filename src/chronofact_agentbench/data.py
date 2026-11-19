@@ -89,7 +89,7 @@ def download_dataset(output_path: str, timeout: int = 90) -> Dict[str, object]:
 
     request = urllib.request.Request(
         DATASET_URL,
-        headers={"User-Agent": "ChronoFact-AgentBench/0.2.0"},
+        headers={"User-Agent": "ChronoFact-AgentBench/0.3.0"},
     )
 
     digest = hashlib.sha256()

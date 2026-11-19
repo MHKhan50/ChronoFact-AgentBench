@@ -34,6 +34,10 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--ollama-model", default="qwen2.5:3b")
     run_parser.add_argument("--ollama-sample-limit", type=int, default=50)
     run_parser.add_argument("--ollama-base-url", default="http://localhost:11434")
+    run_parser.add_argument("--agent-conditions", default="text,tool_dates,tool_code,tool_overlap",
+                            help="Comma-separated: text, tool_dates, tool_code, tool_overlap.")
+    run_parser.add_argument("--structured-output", action="store_true",
+                            help="Constrain every model reply to a JSON schema with only the allowed action.")
     return parser
 
 
@@ -56,6 +60,8 @@ def main() -> None:
             ollama_model=args.ollama_model,
             ollama_sample_limit=args.ollama_sample_limit,
             ollama_base_url=args.ollama_base_url,
+            conditions=tuple(c.strip() for c in args.agent_conditions.split(",") if c.strip()),
+            structured_output=args.structured_output,
             input_sha256=sha256_file(Path(args.input)),
         )
         print(json.dumps(outputs, indent=2))

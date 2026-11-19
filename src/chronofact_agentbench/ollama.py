@@ -9,6 +9,8 @@ import urllib.request
 from typing import Dict, List, Mapping, Optional
 
 from .policies import EVIDENCE_LEVELS, LABELS, tool_observation
+from .safe_expr import UnsafeExpression, evaluate_label_expression
+from .temporal import parse_temporal_interval
 
 LABEL_DEFINITIONS = (
     "Labels: correct = the time in the statement lies entirely inside the period when the fact held; "
@@ -26,12 +28,13 @@ class OllamaClient:
         self.model = model
         self.base_url = base_url.rstrip("/")
 
-    def chat(self, messages: List[Dict[str, str]]) -> str:
+    def chat(self, messages: List[Dict[str, str]], schema: Optional[Dict[str, object]] = None) -> str:
+        """Send a chat request. With ``schema``, Ollama constrains the reply to that JSON schema."""
         payload = {
             "model": self.model,
             "messages": messages,
             "stream": False,
-            "format": "json",
+            "format": schema if schema is not None else "json",
             "options": {"temperature": 0},
         }
         request = urllib.request.Request(
@@ -92,7 +95,37 @@ def _confidence(payload: Mapping[str, object]) -> Optional[float]:
     return value
 
 
-def predict_text_only(client: OllamaClient, row: Mapping[str, object]) -> Dict[str, object]:
+def _schema(actions, final: bool = False, code: bool = False) -> Dict[str, object]:
+    """JSON schema for one agent step: the allowed action names, plus the answer fields if final."""
+    properties: Dict[str, object] = {"action": {"type": "string", "enum": list(actions)}}
+    required = ["action"]
+    if final:
+        properties["label"] = {"type": "string", "enum": list(LABELS)}
+        properties["confidence"] = {"type": "number", "minimum": 0, "maximum": 1}
+        required += ["label", "confidence"]
+    if code:
+        properties["expression"] = {"type": "string"}
+        required.append("expression")
+    return {"type": "object", "properties": properties, "required": required}
+
+
+TEXT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "label": {"type": "string", "enum": list(LABELS)},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    },
+    "required": ["label", "confidence"],
+}
+
+
+def _chat(client, messages, schema: Optional[Dict[str, object]]) -> str:
+    return client.chat(messages) if schema is None else client.chat(messages, schema=schema)
+
+
+def predict_text_only(
+    client: OllamaClient, row: Mapping[str, object], structured: bool = False
+) -> Dict[str, object]:
     """Ask the model to judge only the natural-language statement."""
     messages = [
         {
@@ -105,7 +138,7 @@ def predict_text_only(client: OllamaClient, row: Mapping[str, object]) -> Dict[s
         },
         {"role": "user", "content": str(row["Statement"])},
     ]
-    response = client.chat(messages)
+    response = _chat(client, messages, TEXT_SCHEMA if structured else None)
     try:
         payload = parse_json_object(response)
     except ValueError:
@@ -128,12 +161,28 @@ def predict_text_only(client: OllamaClient, row: Mapping[str, object]) -> Dict[s
     }
 
 
+CODE_INSTRUCTIONS = (
+    "After compare_context, do not give the label directly. Write one Python expression that computes it from "
+    "four dates: cs and ce are the first and last day of the statement's time, fs and fe the first and last day of "
+    "the fact's validity period (all inclusive, comparable with < <= > >= == !=). Use only these names, the "
+    "strings \"correct\", \"incorrect\" and \"transitional\", comparisons, and/or/not and "
+    "x if condition else y. Return JSON {\"action\":\"final_code\",\"expression\":\"...\"}."
+)
+
+
 def predict_tool_agent(
-    client: OllamaClient, row: Mapping[str, object], evidence_level: str = "overlap"
+    client: OllamaClient,
+    row: Mapping[str, object],
+    evidence_level: str = "overlap",
+    structured: bool = False,
+    write_code: bool = False,
 ) -> Dict[str, object]:
     """Run a small plan-act-observe-finalize loop using deterministic date tools.
 
     ``evidence_level`` sets what compare_context returns (see ``tool_observation``).
+    ``structured`` constrains every reply to a JSON schema with only the action allowed at that step.
+    ``write_code`` asks the model for an expression that computes the label from the dates, which
+    is then evaluated by ``safe_expr`` (a program-aided variant of the dates condition).
     """
     if evidence_level not in EVIDENCE_LEVELS:
         raise ValueError("Unsupported evidence level: {!r}".format(evidence_level))
@@ -159,6 +208,7 @@ def predict_tool_agent(
                 "{\"action\":\"compare_context\"}. For the final answer return JSON "
                 "{\"action\":\"final\",\"label\":\"correct|incorrect|transitional\","
                 "\"confidence\":0.0}. Never invent dates."
+                + (" " + CODE_INSTRUCTIONS if write_code else "")
             ),
         },
         {"role": "user", "content": json.dumps(base_context, ensure_ascii=False)},
@@ -166,8 +216,17 @@ def predict_tool_agent(
 
     fact_interval = None
     evidence = None
+    final_action = "final_code" if write_code else "final"
     for step in range(3):
-        response = client.chat(messages)
+        schema = None
+        if structured:
+            if fact_interval is None:
+                schema = _schema(["get_fact_interval"])
+            elif evidence is None:
+                schema = _schema(["compare_context"])
+            else:
+                schema = _schema([final_action], final=not write_code, code=write_code)
+        response = _chat(client, messages, schema)
         try:
             action = parse_json_object(response)
         except ValueError:
@@ -197,7 +256,32 @@ def predict_tool_agent(
             messages.append({"role": "user", "content": "Tool result: " + json.dumps(observation)})
             continue
 
-        if name == "final" and evidence is not None:
+        if write_code and name == "final_code" and evidence is not None:
+            expression = action.get("expression")
+            try:
+                context_start, context_end, _ = parse_temporal_interval(str(row["Time"]))
+                fact_start, _, _ = parse_temporal_interval(str(row["StartDate"]))
+                _, fact_end, _ = parse_temporal_interval(str(row["EndDate"]))
+                value = evaluate_label_expression(
+                    expression, {"cs": context_start, "ce": context_end, "fs": fact_start, "fe": fact_end}
+                )
+                label = normalize_model_label(value) or "abstain"
+                error = None if label != "abstain" else "expression returned an unknown label"
+            except UnsafeExpression as exc:
+                label, error = "abstain", str(exc)
+            if label == "abstain":
+                invalid_actions += 1
+            trace.append({"stage": "final_code", "response": action, "result": label, "error": error})
+            return {
+                "label": label,
+                "confidence": None,
+                "tool_calls": tool_calls,
+                "invalid_actions": invalid_actions,
+                "fallback_actions": 0,
+                "trace": trace,
+            }
+
+        if name == "final" and evidence is not None and not write_code:
             label = normalize_model_label(action.get("label")) or "abstain"
             if label == "abstain":
                 invalid_actions += 1
