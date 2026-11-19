@@ -18,7 +18,7 @@ from .policies import interval_rule_policy, majority_policy
 
 # Agent conditions, from least to most help: memory only, the two date intervals, and the
 # intervals plus overlap counts and containment flags (from which the label follows by rule).
-DEFAULT_CONDITIONS = ("text", "tool_dates", "tool_code", "tool_overlap")
+DEFAULT_CONDITIONS = ("text", "tool_dates", "tool_code", "tool_code_repair", "tool_overlap")
 
 
 def agent_conditions(names=DEFAULT_CONDITIONS, structured: bool = False):
@@ -26,7 +26,9 @@ def agent_conditions(names=DEFAULT_CONDITIONS, structured: bool = False):
 
     text: memory only. tool_dates: the tool returns the two date spans and the model compares them.
     tool_code: as tool_dates, but the model writes an expression that computes the label, which is
-    evaluated safely (program-aided). tool_overlap: the tool also returns overlap flags.
+    evaluated safely (program-aided). tool_code_repair: as tool_code, with a syntax example on a toy
+    rule and one corrected expression allowed after an evaluation error. tool_overlap: the tool also
+    returns overlap flags.
     """
     runners = {
         "text": lambda client, row: predict_text_only(client, row, structured=structured),
@@ -34,6 +36,8 @@ def agent_conditions(names=DEFAULT_CONDITIONS, structured: bool = False):
             client, row, evidence_level="dates", structured=structured),
         "tool_code": lambda client, row: predict_tool_agent(
             client, row, evidence_level="dates", structured=structured, write_code=True),
+        "tool_code_repair": lambda client, row: predict_tool_agent(
+            client, row, evidence_level="dates", structured=structured, write_code=True, repair=True),
         "tool_overlap": lambda client, row: predict_tool_agent(
             client, row, evidence_level="overlap", structured=structured),
     }

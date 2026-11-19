@@ -178,6 +178,36 @@ CODE_INSTRUCTIONS = (
     "x if condition else y. Return JSON {\"action\":\"final_code\",\"expression\":\"...\"}."
 )
 
+# Shown only in the tool_code_repair condition: the form of a valid expression on a different toy rule,
+# so the example teaches the syntax without giving away the labelling rule.
+CODE_EXAMPLE = (
+    "Example of the form only (a toy rule, not the rule for this task): "
+    "\"incorrect\" if fe < cs else (\"transitional\" if fs == ce else \"correct\"). "
+    "The four names are already dates; never write a date literal such as 2007-01-01."
+)
+
+REPAIR_MESSAGE = (
+    "Your expression could not be evaluated: {error}. Write one corrected Python expression that uses only "
+    "cs, ce, fs, fe, the three label strings, comparisons, and/or/not and x if condition else y, and that "
+    "evaluates to \"correct\", \"incorrect\" or \"transitional\". Return JSON "
+    "{{\"action\":\"final_code\",\"expression\":\"...\"}}."
+)
+
+
+def _evaluate_code(row: Mapping[str, object], expression) -> "tuple":
+    """Evaluate a model expression on the row's four dates; return (label or "abstain", error or None)."""
+    try:
+        context_start, context_end, _ = parse_temporal_interval(str(row["Time"]))
+        fact_start, _, _ = parse_temporal_interval(str(row["StartDate"]))
+        _, fact_end, _ = parse_temporal_interval(str(row["EndDate"]))
+        value = evaluate_label_expression(
+            expression, {"cs": context_start, "ce": context_end, "fs": fact_start, "fe": fact_end}
+        )
+    except UnsafeExpression as exc:
+        return "abstain", str(exc)
+    label = normalize_model_label(value) or "abstain"
+    return label, (None if label != "abstain" else "expression returned an unknown label")
+
 
 def predict_tool_agent(
     client: OllamaClient,
@@ -185,6 +215,7 @@ def predict_tool_agent(
     evidence_level: str = "overlap",
     structured: bool = False,
     write_code: bool = False,
+    repair: bool = False,
 ) -> Dict[str, object]:
     """Run a small plan-act-observe-finalize loop using deterministic date tools.
 
@@ -192,7 +223,11 @@ def predict_tool_agent(
     ``structured`` constrains every reply to a JSON schema with only the action allowed at that step.
     ``write_code`` asks the model for an expression that computes the label from the dates, which
     is then evaluated by ``safe_expr`` (a program-aided variant of the dates condition).
+    ``repair`` (with ``write_code``) adds a syntax example to the instructions and allows one corrected
+    expression after an evaluation error, which is fed back to the model.
     """
+    if repair and not write_code:
+        raise ValueError("repair requires write_code")
     if evidence_level not in EVIDENCE_LEVELS:
         raise ValueError("Unsupported evidence level: {!r}".format(evidence_level))
     trace = []
@@ -218,6 +253,7 @@ def predict_tool_agent(
                 "{\"action\":\"final\",\"label\":\"correct|incorrect|transitional\","
                 "\"confidence\":0.0}. Never invent dates."
                 + (" " + CODE_INSTRUCTIONS if write_code else "")
+                + (" " + CODE_EXAMPLE if repair else "")
             ),
         },
         {"role": "user", "content": json.dumps(base_context, ensure_ascii=False)},
@@ -266,21 +302,23 @@ def predict_tool_agent(
             continue
 
         if write_code and name == "final_code" and evidence is not None:
-            expression = action.get("expression")
-            try:
-                context_start, context_end, _ = parse_temporal_interval(str(row["Time"]))
-                fact_start, _, _ = parse_temporal_interval(str(row["StartDate"]))
-                _, fact_end, _ = parse_temporal_interval(str(row["EndDate"]))
-                value = evaluate_label_expression(
-                    expression, {"cs": context_start, "ce": context_end, "fs": fact_start, "fe": fact_end}
-                )
-                label = normalize_model_label(value) or "abstain"
-                error = None if label != "abstain" else "expression returned an unknown label"
-            except UnsafeExpression as exc:
-                label, error = "abstain", str(exc)
+            label, error = _evaluate_code(row, action.get("expression"))
+            trace.append({"stage": "final_code", "response": action, "result": label, "error": error})
             if label == "abstain":
                 invalid_actions += 1
-            trace.append({"stage": "final_code", "response": action, "result": label, "error": error})
+                if repair:
+                    messages.append({"role": "assistant", "content": response})
+                    messages.append({"role": "user", "content": REPAIR_MESSAGE.format(error=error)})
+                    retry = _chat(client, messages, _schema(["final_code"], code=True) if structured else None)
+                    try:
+                        retry_action = parse_json_object(retry)
+                        label, error = _evaluate_code(row, retry_action.get("expression"))
+                        trace.append({"stage": "repair_code", "response": retry_action, "result": label, "error": error})
+                    except ValueError:
+                        label = "abstain"
+                        trace.append({"stage": "repair_parse_error", "raw": retry})
+                    if label == "abstain":
+                        invalid_actions += 1
             return {
                 "label": label,
                 "confidence": None,

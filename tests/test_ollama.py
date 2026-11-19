@@ -103,6 +103,44 @@ def test_code_agent_rejects_unsafe_expression(toy_frame):
     assert result["invalid_actions"] == 1
 
 
+def test_repair_agent_gets_one_corrected_expression_after_an_error(toy_frame):
+    import json
+
+    from chronofact_agentbench.policies import interval_rule_policy
+
+    good = '"correct" if fs <= cs and ce <= fe else ("incorrect" if ce < fs or cs > fe else "transitional")'
+    row = toy_frame.iloc[0]
+    client = FakeClient(
+        [
+            '{"action":"get_fact_interval"}',
+            '{"action":"compare_context"}',
+            '{"action":"final_code","expression":"cs <= fe"}',
+            '{"action":"final_code","expression":' + json.dumps(good) + '}',
+        ]
+    )
+    result = predict_tool_agent(client, row, evidence_level="dates", write_code=True, repair=True)
+    assert result["label"] == interval_rule_policy(row.to_dict())
+    assert [t.get("stage") for t in result["trace"]][-2:] == ["final_code", "repair_code"]
+    assert result["trace"][-2]["error"] == "Expression did not return a label"
+    assert result["invalid_actions"] == 1
+
+
+def test_repair_agent_abstains_after_two_failures_and_plain_code_agent_gets_no_retry(toy_frame):
+    replies = [
+        '{"action":"get_fact_interval"}',
+        '{"action":"compare_context"}',
+        '{"action":"final_code","expression":"cs <= fe"}',
+        '{"action":"final_code","expression":"2007-01-01 < fe"}',
+    ]
+    repaired = predict_tool_agent(FakeClient(replies), toy_frame.iloc[0], evidence_level="dates",
+                                  write_code=True, repair=True)
+    assert repaired["label"] == "abstain" and repaired["invalid_actions"] == 2
+    plain_client = FakeClient(replies)
+    plain = predict_tool_agent(plain_client, toy_frame.iloc[0], evidence_level="dates", write_code=True)
+    assert plain["label"] == "abstain" and plain["invalid_actions"] == 1
+    assert len(plain_client.responses) == 1  # no retry was requested
+
+
 def test_timeout_in_one_episode_is_an_abstention_not_a_crash(toy_frame, tmp_path, monkeypatch):
     from chronofact_agentbench import evaluate
     from chronofact_agentbench.ollama import OllamaTimeout
