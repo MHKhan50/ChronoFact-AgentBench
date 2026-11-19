@@ -10,6 +10,7 @@ authors:
     orcid: "https://orcid.org/0009-0001-2570-5686"
 license: MIT
 type: software
+doi: 10.5281/zenodo.24356041
 abstract: >-
   Code, results and paper for checking time-qualified claims with small local language models. On 150 TimeStress
   claims balanced over the labels correct, incorrect and transitional, qwen2.5:3b and llama3.1:8b answered from

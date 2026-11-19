@@ -1,5 +1,7 @@
 # ChronoFact-AgentBench
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24356041.svg)](https://doi.org/10.5281/zenodo.24356041)
+
 **Tool-Augmented Temporal Verification of Time-Qualified Knowledge Claims**
 
 ChronoFact-AgentBench is a reproducible evaluation harness for comparing a text-only language-model baseline with a tool-using agent on historical claims whose validity changes over time. It uses the public **TimeStress** dataset and its three documented labels: `correct`, `incorrect`, and `transitional`.
