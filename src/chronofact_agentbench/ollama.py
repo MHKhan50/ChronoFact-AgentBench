@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import socket
 import urllib.error
 import urllib.request
 from typing import Dict, List, Mapping, Optional
@@ -23,8 +24,13 @@ class OllamaError(RuntimeError):
     pass
 
 
+class OllamaTimeout(OllamaError):
+    """One request took too long; the episode is recorded as an abstention and the run continues."""
+
+
 class OllamaClient:
-    def __init__(self, model: str = "qwen2.5:3b", base_url: str = "http://localhost:11434"):
+    def __init__(self, model: str = "qwen2.5:3b", base_url: str = "http://localhost:11434", timeout: int = 300):
+        self.timeout = timeout
         self.model = model
         self.base_url = base_url.rstrip("/")
 
@@ -35,7 +41,8 @@ class OllamaClient:
             "messages": messages,
             "stream": False,
             "format": schema if schema is not None else "json",
-            "options": {"temperature": 0},
+            # num_predict caps one reply; a JSON action or a label expression needs far fewer tokens.
+            "options": {"temperature": 0, "num_predict": 256},
         }
         request = urllib.request.Request(
             self.base_url + "/api/chat",
@@ -44,9 +51,11 @@ class OllamaClient:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=180) as response:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 result = json.loads(response.read().decode("utf-8"))
-        except (urllib.error.URLError, TimeoutError, ValueError) as exc:
+        except (socket.timeout, TimeoutError) as exc:
+            raise OllamaTimeout("Ollama request timed out after {} s".format(self.timeout)) from exc
+        except (urllib.error.URLError, ValueError) as exc:
             raise OllamaError("Ollama request failed: {}".format(exc))
         message = result.get("message", {})
         content = message.get("content")

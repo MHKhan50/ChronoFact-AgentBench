@@ -13,7 +13,7 @@ import pandas as pd
 from . import __version__
 from .data import sha256_file
 from .metrics import classification_metrics
-from .ollama import OllamaClient, OllamaError, predict_text_only, predict_tool_agent
+from .ollama import OllamaClient, OllamaError, OllamaTimeout, predict_text_only, predict_tool_agent
 from .policies import interval_rule_policy, majority_policy
 
 # Agent conditions, from least to most help: memory only, the two date intervals, and the
@@ -172,6 +172,7 @@ def run_experiment(
 
     traces = []
     ollama_error = None
+    timeouts = 0
     if include_ollama:
         client = OllamaClient(model=ollama_model, base_url=ollama_base_url)
         sample = _balanced_sample(data, int(ollama_sample_limit), seed + 1)
@@ -181,7 +182,14 @@ def run_experiment(
             results = {}
             try:
                 for condition, runner in runners.items():
-                    results[condition] = runner(client, row)
+                    try:
+                        results[condition] = runner(client, row)
+                    except OllamaTimeout as exc:
+                        timeouts += 1
+                        results[condition] = {
+                            "label": "abstain", "confidence": None, "tool_calls": 0, "invalid_actions": 1,
+                            "fallback_actions": 0, "trace": [{"stage": "timeout", "error": str(exc)}],
+                        }
             except OllamaError as exc:
                 ollama_error = str(exc)
                 break
@@ -244,6 +252,7 @@ def run_experiment(
         "ollama_model": ollama_model if include_ollama else None,
         "ollama_sample_limit": int(ollama_sample_limit) if include_ollama else 0,
         "ollama_error": ollama_error,
+        "ollama_timeouts": timeouts,
         "agent_conditions": list(runners) if include_ollama else [],
         "structured_output": bool(structured_output) if include_ollama else None,
         "python": platform.python_version(),

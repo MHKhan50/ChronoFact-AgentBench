@@ -101,3 +101,23 @@ def test_code_agent_rejects_unsafe_expression(toy_frame):
     result = predict_tool_agent(client, toy_frame.iloc[0], evidence_level="dates", write_code=True)
     assert result["label"] == "abstain"
     assert result["invalid_actions"] == 1
+
+
+def test_timeout_in_one_episode_is_an_abstention_not_a_crash(toy_frame, tmp_path, monkeypatch):
+    from chronofact_agentbench import evaluate
+    from chronofact_agentbench.ollama import OllamaTimeout
+
+    class SlowClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def chat(self, messages, schema=None):
+            raise OllamaTimeout("timed out")
+
+    monkeypatch.setattr(evaluate, "OllamaClient", SlowClient)
+    frame = toy_frame.copy()
+    outputs = evaluate.run_experiment(frame, str(tmp_path), include_ollama=True, ollama_sample_limit=3,
+                                      conditions=("text",))
+    import json
+    meta = json.loads(open(outputs["metadata"]).read())
+    assert meta["ollama_timeouts"] >= 1 and meta["ollama_error"] is None

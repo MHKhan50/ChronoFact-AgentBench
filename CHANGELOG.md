@@ -8,6 +8,8 @@
   expression over `cs`, `ce`, `fs`, `fe` that computes the label; `safe_expr.py` evaluates it without `eval`,
   allowing only comparisons, boolean operators, conditional expressions and the three label strings.
 - `--agent-conditions` selects the conditions to run.
+- A request that times out (300 s) is recorded as an abstention with a `timeout` trace and counted in
+  `run_metadata.json`; one reply is capped at 256 tokens.
 - `pytest` runs from a fresh clone without installing the package (`pythonpath = ["src"]`).
 
 ## 0.2.0 — 2026-11-18
