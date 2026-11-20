@@ -42,7 +42,7 @@ scoring because it ended 79 of 150 episodes with a malformed final action; scori
 with every claim inside the period right but only 36\% of the partly overlapping claims. With the overlap flags both
 models reached 98.7--100\%. Asked instead to write the comparison as a Python expression over the dates, they almost
 never produced code that ran (0 and 6 of 150 claims); with a syntax example and one chance to repair, \code{llama3.1:8b}
-ran code on 110 claims but its logic was right on only 47 (31.3\%), and \code{qwen2.5:3b} on 2. The hard step is comparing intervals, above all at the boundary, and code does it
+ran code on 110 claims but its logic was right on only 47 (31.3\%); \code{qwen2.5:3b} ran code on 6 claims and was right on 2. The hard step is comparing intervals, above all at the boundary, and code does it
 exactly. Tool-using agents for temporal checks should compute the comparison in code and leave the model to read and
 report it, and evaluations should report protocol errors separately from wrong answers.
 \end{abstract}
@@ -63,12 +63,16 @@ that models are weak at exactly this kind of comparison and arithmetic and that 
 or a records office could run locally.
 
 We hold the claims, labels and prompts fixed and change only what the tool returns: nothing (memory only), the two
-date spans, or the spans plus overlap flags. Our contributions:
+date spans, or the spans plus overlap flags, and in two further conditions ask the model to write the comparison
+itself as code. Our contributions:
 \begin{itemize}
   \item A paired comparison of the three evidence levels for two small local models on 150 TimeStress claims balanced
   over labels, with fact-level bootstrap intervals and exact McNemar tests.
   \item Evidence that the bottleneck is the interval comparison, not the lookup: given the dates, one model still
   answered ``incorrect'' for 37 of 50 right claims, and the other recognised only 36\% of the partly overlapping claims.
+  \item Evidence that model-written code is not a substitute: asked to compute the comparison in a Python expression,
+  the models rarely produced code that ran, and after one repair \code{llama3.1:8b}'s code ran on 110 claims but
+  encoded the wrong interval logic, right on only 31.3\% of all claims.
   \item A strict and a lenient score for each condition, showing that a protocol error (a misnamed final action) can
   hide most of a model's correct judgements.
 \end{itemize}
