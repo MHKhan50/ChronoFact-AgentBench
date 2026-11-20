@@ -1,0 +1,38 @@
+{
+  "project": "ChronoFact-AgentBench",
+  "version": "0.3.0",
+  "created_utc": "2026-11-19T22:48:25.423385+00:00",
+  "seed": 17,
+  "rows_used": 500108,
+  "unique_facts": 1982,
+  "class_counts": {
+    "incorrect": 431943,
+    "correct": 66651,
+    "transitional": 1514
+  },
+  "granularity_counts": {
+    "year": 167712,
+    "month": 166198,
+    "day": 166198
+  },
+  "grouping_note": "Rows are repeated contexts for the same fact; fact_id is retained for cluster-aware analysis.",
+  "target": "label (Correct / Incorrect / Transitional)",
+  "model_input_exclusions": [
+    "Status",
+    "Alpha",
+    "label"
+  ],
+  "include_ollama": true,
+  "ollama_model": "qwen2.5:3b",
+  "ollama_sample_limit": 150,
+  "ollama_error": null,
+  "ollama_timeouts": 0,
+  "agent_conditions": [
+    "tool_code_repair"
+  ],
+  "structured_output": true,
+  "python": "3.9.6",
+  "pandas": "2.2.3",
+  "input_sha256": "48b04f7b4691911553663696cb70ceac78d83e48c5cdc4b315ef625c0cead385",
+  "interpretation": "This evaluates temporal validity labels from TimeStress, not independent historical truth or source reliability."
+}

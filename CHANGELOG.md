@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — unreleased
+## 0.3.0 — 2026-11-20
 
 - `--structured-output`: every model reply is constrained by an Ollama JSON schema that allows only the action
   expected at that step, so a misnamed final action can no longer end an episode.
@@ -10,6 +10,10 @@
 - `--agent-conditions` selects the conditions to run.
 - A request that times out (300 s) is recorded as an abstention with a `timeout` trace and counted in
   `run_metadata.json`; one reply is capped at 256 tokens.
+- New condition `tool_code_repair`: one worked syntax example and one corrected attempt after a parse or evaluation
+  error.
+- Results of both code conditions and a schema-constrained re-run of all conditions in `results/structured-*` and
+  `results/repair-*`; paper updated with the code conditions and the structured-output check.
 - `pytest` runs from a fresh clone without installing the package (`pythonpath = ["src"]`).
 
 ## 0.2.0 — 2026-11-18

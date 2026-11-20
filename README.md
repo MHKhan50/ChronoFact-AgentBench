@@ -50,7 +50,7 @@ The interval-rule baseline uses only `Time`, `StartDate`, and `EndDate`. `Status
 
 Every number below was produced by the pipeline from the downloaded data; the per-row predictions and tool traces are in `results/`.
 
-## Results (v0.2.0)
+## Results (v0.3.0)
 
 Two local models (Ollama, temperature 0) on 150 TimeStress claims, 50 per label, from 82 facts. Abstentions count as
 wrong; 95% intervals from a bootstrap over facts. "Lenient" also accepts a valid label given with a misnamed final
@@ -65,10 +65,23 @@ action (`classify` instead of `final`) after both tools were called.
 | llama3.1:8b | Tool: dates | 30.0 [21.0, 39.7] | 79 | 72.0 |
 | llama3.1:8b | Tool: dates + overlap flags | 88.7 [80.9, 95.6] | 17 | 100.0 |
 
+Model writes the comparison as a Python expression (schema-constrained replies; restricted evaluator):
+
+| Model | Condition | Accuracy % [95% CI] | Abstained |
+|---|---|---|---|
+| qwen2.5:3b | Tool: dates, write code | 0.0 | 150 |
+| qwen2.5:3b | … with one repair | 1.3 [0.0, 3.4] | 144 |
+| llama3.1:8b | Tool: dates, write code | 2.7 | 144 |
+| llama3.1:8b | … with one repair | 31.3 [23.3, 39.5] | 40 |
+
 - From memory both models are close to guessing (33.3%); neither recognises partial overlap.
 - Given only the two date spans, `qwen2.5:3b` still calls 37 of 50 correct claims incorrect, and `llama3.1:8b`
   (leniently scored) gets only 18 of 50 partly overlapping claims right.
 - When the tool also returns overlap flags, both models reach 98.7–100%.
+- Asked to write the comparison in code, the models fail at syntax; after one repair `llama3.1:8b` runs code on 110
+  claims but its interval logic is right on only 47. With schema-constrained replies the protocol errors disappear
+  and `llama3.1:8b` scores 72.7% (dates) and 100% (overlap flags), matching its lenient scores.
+  Outputs: `results/structured-*` and `results/repair-*`.
 
 On all 500,108 rows the majority label scores 86.4% and the interval rule 100% (it applies the label definition).
 Paired McNemar tests and confusion matrices: `results/analysis/tables.md` and `analysis.json`. Reproduce with

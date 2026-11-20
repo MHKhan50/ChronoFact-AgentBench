@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below and cite the TimeStress dataset and paper separately."
 title: "ChronoFact-AgentBench: Tool-Augmented Temporal Verification of Time-Qualified Knowledge Claims"
-version: 0.2.0
-date-released: 2026-11-18
+version: 0.3.0
+date-released: 2026-11-20
 authors:
   - family-names: Hussain
     given-names: Muzammal

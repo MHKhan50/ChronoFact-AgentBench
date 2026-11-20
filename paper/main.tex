@@ -40,7 +40,9 @@ From memory the models reached 35.3\% and 46.0\% accuracy, close to the 33.3\% o
 \code{qwen2.5:3b} still labelled almost every claim as wrong (41.3\%). \code{llama3.1:8b} scored 30.0\% under strict
 scoring because it ended 79 of 150 episodes with a malformed final action; scoring those answers anyway gives 72.0\%,
 with every claim inside the period right but only 36\% of the partly overlapping claims. With the overlap flags both
-models reached 98.7--100\%. The hard step is comparing intervals, above all at the boundary, and code does it
+models reached 98.7--100\%. Asked instead to write the comparison as a Python expression over the dates, they almost
+never produced code that ran (0 and 6 of 150 claims); with a syntax example and one chance to repair, \code{llama3.1:8b}
+ran code on 110 claims but its logic was right on only 47 (31.3\%), and \code{qwen2.5:3b} on 2. The hard step is comparing intervals, above all at the boundary, and code does it
 exactly. Tool-using agents for temporal checks should compute the comparison in code and leave the model to read and
 report it, and evaluations should report protocol errors separately from wrong answers.
 \end{abstract}
@@ -107,7 +109,13 @@ of 150 rows, 50 per label, drawn with a fixed seed and spread over precisions wi
 \paragraph{Conditions.} All three conditions use the same label definitions in the system prompt. \emph{Text only}:
 the model sees the statement and answers from memory. \emph{Tool: dates}: the agent must call
 \code{get\_fact\_interval}, then \code{compare\_context}, which returns the context span and the validity period, and
-then give a final answer; the agent has to compare the two spans itself. \emph{Tool: dates + overlap flags}: the same
+then give a final answer; the agent has to compare the two spans itself. \emph{Tool: dates, write code}: after the
+same two calls the agent must return a one-line Python expression over the six dates that evaluates to the label; a
+restricted evaluator (comparisons, \code{and}/\code{or}, conditional expressions and string constants only) runs it.
+\emph{With one repair}: the prompt adds one worked syntax example, and an expression that fails to parse or evaluate
+is returned with the error for one corrected attempt. The code conditions were run in a second session with
+replies constrained by a JSON schema that allows only the action expected at each step (Ollama structured output);
+in that session we also re-ran the other three conditions. \emph{Tool: dates + overlap flags}: the same
 loop, but \code{compare\_context} also returns the overlap in days and three flags (fully contained, no overlap,
 partial overlap), from which the label follows directly. The agent loop allows three steps; a response that is not
 the expected action ends the episode as an abstention.
@@ -135,10 +143,14 @@ Model & Condition & Accuracy (\%) & Abstained & Lenient (\%) & Transitional reca
 \code{qwen2.5:3b} & Text only & 35.3 [22.8, 47.2] & 0 & 35.3 & 0\% \\
  & Tool: dates & 41.3 [29.2, 52.7] & 1 & 41.3 & 4\% \\
  & Tool: dates + overlap flags & 98.7 [96.6, 100.0] & 1 & 98.7 & 98\% \\
+ & Tool: dates, write code & 0.0 & 150 & 0.0 & 0\% \\
+ & \quad with one repair & 1.3 [0.0, 3.4] & 144 & 1.3 & 2\% \\
 \midrule
 \code{llama3.1:8b} & Text only & 46.0 [33.8, 57.7] & 0 & 46.0 & 10\% \\
  & Tool: dates & 30.0 [21.0, 39.7] & 79 & 72.0 & 36\% \\
  & Tool: dates + overlap flags & 88.7 [80.9, 95.6] & 17 & 100.0 & 100\% \\
+ & Tool: dates, write code & 2.7 & 144 & 2.7 & 8\% \\
+ & \quad with one repair & 31.3 [23.3, 39.5] & 40 & 31.3 & 26\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -167,9 +179,19 @@ but on only 18 of the 50 partly overlapping claims; it called 28 of them correct
 \paragraph{With overlap flags, both models are near the ceiling.} \code{qwen2.5:3b} reached 98.7\% and
 \code{llama3.1:8b} 88.7\% under strict scoring and 100\% leniently; its 17 strict errors were again misnamed final
 actions with the right label. Against the dates-only condition the flags gained 86 rows and lost none for
-\code{qwen2.5:3b}, and 88 rows and lost none for \code{llama3.1:8b} ($p<10^{-25}$ for both). Per-precision accuracy
-is not reported as a separate finding, because in TimeStress all partly overlapping claims have year precision, so
+\code{qwen2.5:3b}, and 88 rows and lost none for \code{llama3.1:8b} ($p<10^{-25}$ for both). Per-precision accuracy is not reported as a separate finding, because in TimeStress all partly overlapping claims have year precision, so
 precision and label cannot be separated.
+
+\paragraph{Writing the comparison in code does not help.} When the agents had to express the comparison as a Python
+expression, \code{qwen2.5:3b} produced no expression that ran and \code{llama3.1:8b} only 6 (Table~\ref{tab:main}).
+The failures were syntax, not the evaluator: statements such as \code{if \ldots: \ldots} instead of an expression, date
+literals with leading zeros, undefined names and expressions that returned no label. With a worked example and one repair,
+\code{llama3.1:8b} produced running code on 110 claims (105 of them after the repair), but the label was right on only
+47; it called 48 claims correct, including 18 of the 50 partly overlapping and 9 of the 50 outside the period. Its
+expressions ran but encoded the wrong interval logic, for example treating any overlap as \emph{correct} or labelling
+containment as \emph{transitional}. \code{qwen2.5:3b} still failed on 144 claims.
+Delegating the comparison to model-written code therefore moves the error from arithmetic to logic; the code has to be
+written by the tool's author, not by the model.
 
 \section{Discussion}
 
@@ -177,7 +199,8 @@ precision and label cannot be separated.
 agrees with the low robustness reported for TimeStress~\cite{khodja2025timestress}. Looking up the period did not fix
 this either, because the small models could not reliably decide how two date spans relate, and failed most on the
 partial overlap that defines a transitional claim. Once code had computed the overlap, the models only had to read a
-flag, and both did so almost perfectly. The practical rule is the one behind program-aided
+flag, and both did so almost perfectly; when the models had to write that code themselves, they failed at syntax and,
+after a repair, at the logic of interval overlap. The practical rule is the one behind program-aided
 reasoning~\cite{gao2023pal}: a tool for temporal checks should return the comparison, not only the inputs to it.
 
 \paragraph{The flags condition is not a reasoning test.} With overlap flags the label follows by rule, so 98.7--100\%
@@ -187,12 +210,16 @@ point of a well-designed tool: it tells a builder what accuracy to expect when t
 \paragraph{Strict and lenient scores answer different questions.} Strict scoring measures whether an agent follows
 the tool protocol; lenient scoring measures whether its judgement is right. For \code{llama3.1:8b} the two differ by
 42 points in the dates condition, and the strict score alone would have suggested that dates make the model worse.
-Agent evaluations should report both, or constrain the output format so that the distinction cannot arise.
+Agent evaluations should report both, or constrain the output format so that the distinction cannot arise. We
+checked the second option: with schema-constrained replies \code{llama3.1:8b} made no protocol errors and scored
+72.7\% with dates and 100\% with overlap flags, matching its lenient scores (72.0\% and 100\%); \code{qwen2.5:3b}
+scored exactly as before (35.3\%, 41.3\%, 98.7\%).
 
 \section{Limitations}
 
 The agent sample has 150 claims from 82 facts, so intervals are wide (about $\pm$12 points for the memory and dates
-conditions). Two small models were tested, once each, at temperature 0, with one prompt per condition; larger models,
+conditions). Two small models were tested, once each, at temperature 0, with one prompt per condition (the code conditions were
+run in a later session on the same rows); larger models,
 other prompts or a chain-of-thought step may compare dates better. All transitional claims have year precision, so
 partial overlap was only tested at that precision. The labels are TimeStress's interval labels, which follow from
 Wikidata validity periods; they do not check whether the underlying historical fact is true. The lenient score
@@ -202,12 +229,13 @@ accepts a label only when it was given after both tool calls; a different parser
 
 Small local models asked whether a time-qualified claim holds were close to guessing from memory and barely better
 when given the dates, because they could not reliably compare two date spans, above all at a boundary. When a tool
-returned the overlap, both models reached 98.7--100\%. Temporal agents should do interval arithmetic in code, and
+returned the overlap, both models reached 98.7--100\%; when they had to write the comparison in code, even with a
+repair step, they reached at most 31.3\%. Temporal agents should do interval arithmetic in code, and
 their evaluations should keep protocol errors apart from wrong answers.
 
 \section*{Code and data availability}
 
-Code, tests, the per-row agent predictions and tool traces for both models, the analysis script and the figure are
+Code, tests, the per-row agent predictions and tool traces for both models and all five conditions, the analysis script and the figure are
 at \url{https://github.com/MHKhan50/ChronoFact-AgentBench} and archived on Zenodo
 (\href{https://doi.org/10.5281/zenodo.24356041}{doi:10.5281/zenodo.24356041}, all versions). TimeStress is not redistributed; the pipeline downloads
 the pinned file from Hugging Face and checks its SHA-256. Code is released under the MIT licence; TimeStress is
