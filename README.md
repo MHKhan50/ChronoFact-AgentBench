@@ -189,3 +189,16 @@ ChronoFact-AgentBench/
 
 See `DATA_LICENSE.md`, `docs/METHODOLOGY.md`, `docs/EXPERIMENT_PROTOCOL.md`, `docs/DATA_DICTIONARY.md`, `docs/LIMITATIONS_ETHICS.md`, and `docs/REFERENCES.md` before writing a paper or public article.
 
+## How to cite
+
+```bibtex
+@misc{hussain2026chronofact,
+  author    = {Hussain, Muzammal},
+  title     = {{Give the Model the Overlap, Not the Dates: Tool Evidence for Checking Time-Qualified Claims with Small Local Models}},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.24356041},
+  url       = {https://doi.org/10.5281/zenodo.24356041}
+}
+```
+
