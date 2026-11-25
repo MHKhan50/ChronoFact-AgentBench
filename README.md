@@ -197,8 +197,10 @@ See `DATA_LICENSE.md`, `docs/METHODOLOGY.md`, `docs/EXPERIMENT_PROTOCOL.md`, `do
   title     = {{Give the Model the Overlap, Not the Dates: Tool Evidence for Checking Time-Qualified Claims with Small Local Models}},
   year      = {2026},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.24356041},
-  url       = {https://doi.org/10.5281/zenodo.24356041}
+  doi       = {10.5281/zenodo.24468882},
+  url       = {https://doi.org/10.5281/zenodo.24468882}
 }
 ```
+
+Software (code, notebooks, results): [doi:10.5281/zenodo.24356041](https://doi.org/10.5281/zenodo.24356041).
 
